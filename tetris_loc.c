@@ -4,6 +4,7 @@
 #include <sys/epoll.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #define ScrH 20         // screen hight
 #define ScrW 10         // screen width
@@ -399,6 +400,10 @@ int main(int argc, char const *argv[]) {
     for (int i = 0; i <= ScrW; i++) {
         arr[i][ScrH + 1] = 1;
     }
+    
+    struct timeval start;
+    gettimeofday(&start, NULL);
+    srandom(start.tv_usec);
 
     for (;;) {
         int r = rand() % 7;
