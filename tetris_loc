@@ -12,6 +12,8 @@
 
 int epollfd;
 
+int Quant = 0;
+
 int arr[ScrW + 10][ScrH + 100];
 
 struct kord {
@@ -44,6 +46,7 @@ void PrintField() {
     for (int j = 0; j <= ScrW + 2; j++) {
         write(1, Walls, 4);
     }
+    printf("\n there are some blocks in game, by now : %d",Quant);
 }
 /*
 void PrintField() {
@@ -112,16 +115,21 @@ int check3x3(struct kord4 *k) {
         return 0;
     }
 }
+
+int fall(struct kord4 *k){
+  if (contact(*k) == 0) {
+      k->k1.y++;
+      k->k2.y++;
+      k->k3.y++;
+      k->k4.y++;
+      k->center.y++;
+      return 1;
+  } else
+      return 0;
+}
 int KeyMovement(struct kord4 *k, char c) {
     if (c == 's') { // move down
-        if (contact(*k) == 0) {
-            k->k1.y++;
-            k->k2.y++;
-            k->k3.y++;
-            k->k4.y++;
-            k->center.y++;
-        } else
-            return 1;
+        fall(k);
         // if cant move down
     } else if (c == 'a') { // move left
         if ((k->k1.x != 0) && (k->k2.x != 0) && (k->k3.x != 0) &&
@@ -224,7 +232,7 @@ void Step(struct kord4 k) {
     int td = 0;
     for (;;) {
         td++;
-        int qofc = epoll_wait(epollfd, events, 3, 300);
+        int qofc = epoll_wait(epollfd, events, 2, 300);
         ClearK(k);
         for (int n = 0; n <= qofc; n++) {
             if (events[n].data.fd == 0) {
@@ -236,15 +244,12 @@ void Step(struct kord4 k) {
                 }
             }
         }
+        DestFL(); // destroy full lines of *
         // if (KeyMovement(k, c) == 0)
         //   break;
         if (contact(k) == 0) {
             if ((td % 2) == 1) {
-                k.k1.y++;
-                k.k2.y++;
-                k.k3.y++;
-                k.k4.y++;
-                k.center.y++;
+              fall(&k);
             }
             AddArr(k);
         } else {
@@ -252,7 +257,6 @@ void Step(struct kord4 k) {
             break;
         }
 
-        DestFL(); // destroy full lines of *
         PrintField();
     }
 }
@@ -262,7 +266,7 @@ void AddToField(int r) {
     // printf("%d",ScrH);
     // char c;
     // read(0,&c,1);
-
+    Quant++;
     struct kord4 k;
 
     if (r == 0) { // sqr
