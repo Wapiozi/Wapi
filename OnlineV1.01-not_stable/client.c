@@ -1,30 +1,29 @@
+#include <arpa/inet.h>
 #include <fcntl.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <termios.h>
 #include <sys/epoll.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/time.h>
-
+#include <sys/types.h>
+#include <termios.h>
+#include <unistd.h>
 
 #define ScrH 20         // screen hight
 #define ScrW 10         // screen width
 #define Walls "\u25A0 " //"\xE2\x96\xA1 "
 #define Block "\u25A3 "
 #define Empty ". "
-#define RED   "\x1B[31m"
-#define GRN   "\x1B[32m"
-#define YEL   "\x1B[33m"
-#define BLU   "\x1B[34m"
-#define MAG   "\x1B[35m"
-#define CYN   "\x1B[36m"
-#define WHT   "\x1B[37m"
+#define RED "\x1B[31m"
+#define GRN "\x1B[32m"
+#define YEL "\x1B[33m"
+#define BLU "\x1B[34m"
+#define MAG "\x1B[35m"
+#define CYN "\x1B[36m"
+#define WHT "\x1B[37m"
 #define RESET "\x1B[0m"
 #define CLEAR_SCREEN "\e[1;1H\e[2J"
 
@@ -34,12 +33,12 @@ int epollfd;
 
 int sock;
 
-//int Quant = 0;
+// int Quant = 0;
 
 int arr[ScrW + 10][ScrH + 10];
 int ServArr[ScrW + 10][ScrH + 10];
-int FLbool = 0; //full line bool
-int ign = ScrH +1;
+int FLbool = 0; // full line bool
+int ign = ScrH + 1;
 
 struct kord {
     int x, y;
@@ -57,49 +56,55 @@ struct kord4 {
 void PrintField() {
     printf(CLEAR_SCREEN);
     for (int i = 0; i <= ScrH; i++) {
-        //write(1, Walls, 4);
+        // write(1, Walls, 4);
         printf(GRN Walls RESET);
         for (int j = 0; j <= ScrW; j++) {
             if (arr[j][i] > 0) {
-                //write(1, "\u25A3 ", 4);
-                printf(CYN Block RESET);
+                // write(1, "\u25A3 ", 4);
+                if (i >= ign) {
+                    printf(WHT Block RESET);
+                } else
+                    printf(CYN Block RESET);
             } else {
-                //write(1, ". ",2);
+                // write(1, ". ",2);
                 printf(MAG Empty RESET);
             }
         }
-        //write(1, Walls, 4);
+        // write(1, Walls, 4);
         printf(GRN Walls RESET);
         printf("    ");
-        //write(1,"    ",4);
-        //write(1, Walls, 4);
+        // write(1,"    ",4);
+        // write(1, Walls, 4);
         printf(RED Walls RESET);
         for (int j = 0; j <= ScrW; j++) {
             if (ServArr[j][i] > 0) {
-                //write(1, "\u25A3 ", 4);
-                printf(YEL Block RESET);
+                // write(1, "\u25A3 ", 4);
+                if (i >= arr[ScrW + 8][ScrH + 8]) {
+                    printf(BLU Block RESET);
+                } else
+                    printf(YEL Block RESET);
             } else {
-                //write(1, ". ",2);
+                // write(1, ". ",2);
                 printf(RED Empty RESET);
             }
         }
-        //write(1, Walls, 4);
+        // write(1, Walls, 4);
         printf(RED Walls RESET);
         printf("\n");
-        //write(1, "\n", 1);
+        // write(1, "\n", 1);
     }
     for (int j = 0; j <= ScrW + 2; j++) {
-      //  write(1, Walls, 4);
+        //  write(1, Walls, 4);
         printf(GRN Walls RESET);
     }
     printf("    ");
-    //write(1, "    ", 4);
+    // write(1, "    ", 4);
     for (int j = 0; j <= ScrW + 2; j++) {
-        //write(1, Walls, 4);
+        // write(1, Walls, 4);
         printf(RED Walls RESET);
     }
     printf("\n");
-    //printf("\n there are some blocks in game, by now : %d",Quant);
+    // printf("\n there are some blocks in game, by now : %d",Quant);
 }
 /*
 void PrintField() {
@@ -154,31 +159,30 @@ int check3x3(struct kord4 *k) {
     if ((arr[k->center.x + 1][k->center.y - 1] == 0) &&
         (arr[k->center.x + 1][k->center.y] == 0) &&
         (arr[k->center.x + 1][k->center.y + 1] == 0) &&
-        (arr[k->center.x][k->center.y - 1] == 0) &&           //smth wrong is here
+        (arr[k->center.x][k->center.y - 1] == 0) && // smth wrong is here
         (arr[k->center.x][k->center.y] == 0) &&
         (arr[k->center.x][k->center.y + 1] == 0) &&
         (arr[k->center.x - 1][k->center.y - 1] == 0) &&
         (arr[k->center.x - 1][k->center.y] == 0) &&
-        (arr[k->center.x - 1][k->center.y + 1] == 0) &&
-        (k->center.x > 1) && (k->center.x < (ScrW))
-        ) {
-        //arr[10000][10000] = 1;
+        (arr[k->center.x - 1][k->center.y + 1] == 0) && (k->center.x > 1) &&
+        (k->center.x < (ScrW))) {
+        // arr[10000][10000] = 1;
         return 1;
     } else {
         return 0;
     }
 }
 
-int fall(struct kord4 *k){
-  if (contact(*k) == 0) {
-      k->k1.y++;
-      k->k2.y++;
-      k->k3.y++;
-      k->k4.y++;
-      k->center.y++;
-      return 1;
-  } else
-      return 0;
+int fall(struct kord4 *k) {
+    if (contact(*k) == 0) {
+        k->k1.y++;
+        k->k2.y++;
+        k->k3.y++;
+        k->k4.y++;
+        k->center.y++;
+        return 1;
+    } else
+        return 0;
 }
 int KeyMovement(struct kord4 *k, char c) {
     if (c == 's') { // move down
@@ -259,11 +263,11 @@ int KeyMovement(struct kord4 *k, char c) {
 }
 
 void moveArr(int maxi) {
-    if (maxi > ign)
-      maxi = ign - 1;
+    // if (maxi >= ign)
+    //    maxi = ign - 1;
     for (int i = maxi; i > 0; i--) {
         for (int j = 0; j <= ScrW; j++) {
-            arr[j][i] = arr[j][i-1];
+            arr[j][i] = arr[j][i - 1];
         }
     }
 }
@@ -276,22 +280,23 @@ void DestFL() {
                 fullline = 0;
             }
         }
-        if (fullline == 1){
+        if ((fullline == 1) && (i < ign)) {
             moveArr(i);
             FLbool = 1;
         }
     }
 }
-void addline(){
-  ign--;
-  for (int i = 0; i<ign; i++){
-    for (int j =0;j<=ScrW; j++){
-      arr[i][j] = arr[i+1][j];
+void addline() {
+    ign--;
+    arr[ScrW + 8][ScrH + 8] = ign;
+    for (int i = 0; i > ign; i++) {
+        for (int j = 0; j <= ScrW; j++) {
+            arr[j][i] = arr[j][i + 1];
+        }
     }
-  }
-  for (int i =0; i<=ScrW; i++){
-    arr[i][ign] = 1;
-  }
+    for (int i = 0; i <= ScrW; i++) {
+        arr[i][ign] = 1;
+    }
 }
 
 void Step(struct kord4 k) {
@@ -317,7 +322,7 @@ void Step(struct kord4 k) {
         //   break;
         if (contact(k) == 0) {
             if ((td % 2) == 1) {
-              fall(&k);
+                fall(&k);
             }
             AddArr(k);
         } else {
@@ -326,22 +331,23 @@ void Step(struct kord4 k) {
         }
 
         if (FLbool) {
-          FLbool = 0;
-          int temparr[ScrW+10][ScrH+10];
-          temparr[ScrW+10][ScrH+10] = 10;
-          write(sock,temparr,sizeof temparr);
-          read(sock,ServArr,sizeof arr);
-          PrintField();
+            ClearK(k);
+            FLbool = 0;
+            int temparr[ScrW + 10][ScrH + 10];
+            temparr[ScrW + 9][ScrH + 9] = 10;
+            write(sock, temparr, sizeof temparr);
+            read(sock, ServArr, sizeof arr);
+            PrintField();
         }
 
-        write(sock,arr,sizeof arr);
-        read(sock,ServArr,sizeof arr);
+        write(sock, arr, sizeof arr);
+        read(sock, ServArr, sizeof arr);
 
-        if (ServArr[ScrW+10][ScrH+10] == 10){
-          addline();
-          write(sock,arr,sizeof arr);
-          write(sock,arr,sizeof arr);
-          read(sock,ServArr,sizeof arr);
+        if (ServArr[ScrW + 9][ScrH + 9] == 10) {
+            addline();
+            write(sock, arr, sizeof arr);
+            write(sock, arr, sizeof arr);
+            read(sock, ServArr, sizeof arr);
         }
         PrintField();
     }
@@ -352,7 +358,7 @@ void AddToField(int r) {
     // printf("%d",ScrH);
     // char c;
     // read(0,&c,1);
-    //Quant++;
+    // Quant++;
     struct kord4 k;
 
     if (r == 0) { // sqr
@@ -499,10 +505,10 @@ int main(int argc, char const *argv[]) {
 
     //__________________________________SERV_END
 
+    arr[ScrW + 8][ScrH + 8] = ign;
     for (int i = 0; i <= ScrW; i++) {
         arr[i][ScrH + 1] = 1;
     }
-
 
     struct timeval start;
     gettimeofday(&start, NULL);
